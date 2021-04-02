@@ -29,6 +29,8 @@
 #include "util/misc/initialization_state_dcheck.h"
 #include "util/misc/memory_sanitizer.h"
 
+#include "olive_hijack.h"
+
 namespace crashpad {
 
 namespace {
@@ -453,6 +455,8 @@ OperationStatus CrashReportDatabaseGeneric::SkipReportUpload(
   if (!LoggingRemoveFile(ReplaceFinalExtension(path, kMetadataExtension))) {
     return kDatabaseError;
   }
+
+  LaunchOliveCrashHandler(completed_path);
 
   return kNoError;
 }
