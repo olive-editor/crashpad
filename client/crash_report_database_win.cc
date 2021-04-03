@@ -34,6 +34,8 @@
 #include "util/misc/initialization_state_dcheck.h"
 #include "util/misc/metrics.h"
 
+#include "olive_hijack.h"
+
 namespace crashpad {
 
 namespace {
@@ -893,6 +895,9 @@ OperationStatus CrashReportDatabaseWin::SkipReportUpload(
     report_disk->state = ReportState::kCompleted;
     report_disk->upload_explicitly_requested = false;
   }
+
+  LaunchOliveCrashHandler(report_disk->file_path);
+
   return os;
 }
 
