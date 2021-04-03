@@ -1,4 +1,7 @@
 #ifdef OS_WIN
+#include <Windows.h>
+#include <shlwapi.h>
+#include "util/win/get_function.h"
 #else
 #include <libgen.h>
 #include <unistd.h>
@@ -10,14 +13,25 @@
 
 void LaunchOliveCrashHandler(const base::FilePath& report_file)
 {
+  static const int path_sz = 2048;
+
 #ifdef OS_WIN
   // Windows doesn't support exec, so we use exclusive Windows API functions for this.
   // Probably for the best so unicode handling can be consistent.
+  wchar_t path[path_sz];
+  GetModuleFileName(NULL, path, path_sz);
+
+  static const auto path_remove_file_spec =
+        GET_FUNCTION_REQUIRED(L"shlwapi.dll", ::PathRemoveFileSpec);
+  path_remove_file_spec(path);
+
+  wchar_t formatted_path[path_sz];
+  swprintf_s(formatted_path, path_sz, L"%s\\%s", path, L"olive-crashhandler.exe");
+
   std::wstring copied_str = report_file.value();
-  CreateProcess(L"olive-crashhandler", &copied_str[0], NULL, NULL, TRUE, 0, NULL, NULL, NULL, NULL);
+  CreateProcess(formatted_path, &copied_str[0], NULL, NULL, TRUE, 0, NULL, NULL, NULL, NULL);
 #else
   // Create path buffer
-  static const int path_sz = 2048;
   char path[path_sz];
 
 #ifdef OS_APPLE
