@@ -47,6 +47,8 @@
 #include "util/ios/scoped_background_task.h"
 #endif  // BUILDFLAG(IS_IOS)
 
+#include "olive_hijack.h"
+
 namespace crashpad {
 
 namespace {
@@ -804,6 +806,8 @@ CrashReportDatabaseMac::MarkReportCompletedLocked(
                 << new_path.value();
     return kFileSystemError;
   }
+
+  LaunchOliveCrashHandler(new_path);
 
   if (out_path)
     *out_path = new_path;
