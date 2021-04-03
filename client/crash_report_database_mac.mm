@@ -39,6 +39,8 @@
 #include "util/misc/initialization_state_dcheck.h"
 #include "util/misc/metrics.h"
 
+#include "olive_hijack.h"
+
 namespace crashpad {
 
 namespace {
@@ -749,6 +751,8 @@ CrashReportDatabaseMac::MarkReportCompletedLocked(
                 << new_path.value();
     return kFileSystemError;
   }
+
+  LaunchOliveCrashHandler(new_path);
 
   if (out_path)
     *out_path = new_path;
