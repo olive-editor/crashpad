@@ -21,15 +21,19 @@ void LaunchOliveCrashHandler(const base::FilePath& report_file)
   wchar_t path[path_sz];
   GetModuleFileName(NULL, path, path_sz);
 
-  static const auto path_remove_file_spec =
-        GET_FUNCTION_REQUIRED(L"shlwapi.dll", ::PathRemoveFileSpec);
-  path_remove_file_spec(path);
+  PathRemoveFileSpec(path);
 
   wchar_t formatted_path[path_sz];
-  swprintf_s(formatted_path, path_sz, L"%s\\%s", path, L"olive-crashhandler.exe");
+  swprintf_s(formatted_path, path_sz, L"%s\\%s %s", path, L"olive-crashhandler.exe", report_file.value().data());
 
-  std::wstring copied_str = report_file.value();
-  CreateProcess(formatted_path, &copied_str[0], NULL, NULL, TRUE, 0, NULL, NULL, NULL, NULL);
+  STARTUPINFO si;
+  PROCESS_INFORMATION pi;
+
+  ZeroMemory(&si, sizeof(si));
+  si.cb = sizeof(si);
+  ZeroMemory(&pi, sizeof(pi));
+
+  CreateProcess(NULL, formatted_path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 #else
   // Create path buffer
   char path[path_sz];
