@@ -1,0 +1,158 @@
+name: CI
+
+on: push
+
+env:
+  DOWNLOAD_TOOL: curl -fLOSs --retry 2 --retry-delay 60
+
+jobs:
+  windows:
+    strategy:
+      matrix:
+        include:
+          - type: RelWithDebInfo
+          - type: Debug
+    name: Windows ${{ matrix.type }}
+    runs-on: windows-latest
+    env:
+      BUILD_TYPE: ${{ matrix.type }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v2
+
+      - name: Enable Developer Command Prompt (Windows)
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Create install destination
+        shell: bash
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/install
+          echo "INSTALL_DIR=$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
+          echo "BOOST_ROOT=$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
+          echo "$GITHUB_WORKSPACE/install" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/install/bin" >> $GITHUB_PATH
+
+      - name: Build
+        shell: cmd
+        working-directory: ${{ runner.workspace }}
+        run: |
+          curl -fsSL http://hg.mozilla.org/build/tools/raw-file/755e58ebc9d4/breakpad/win32/minidump_stackwalk.exe -o "%INSTALL_DIR%/bin/minidump_stackwalk.exe"
+          curl -fsSL http://hg.mozilla.org/build/tools/raw-file/755e58ebc9d4/breakpad/win32/cygwin1.dll -o "%INSTALL_DIR%/bin/cygwin1.dll"
+          curl -fsSL http://hg.mozilla.org/build/tools/raw-file/755e58ebc9d4/breakpad/win32/cygstdc++-6.dll -o "%INSTALL_DIR%/bin/cygstdc++-6.dll"
+          curl -fsSL http://hg.mozilla.org/build/tools/raw-file/755e58ebc9d4/breakpad/win32/cyggcc_s-1.dll -o "%INSTALL_DIR%/bin/cyggcc_s-1.dll"
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          set PATH=%cd%\depot_tools;%PATH%
+          mkdir crashpad
+          cd crashpad
+          git clone --depth 1 https://github.com/olive-editor/crashpad.git
+          cmd /c gclient config https://github.com/olive-editor/crashpad.git
+          cmd /c gclient sync
+          cd crashpad
+          cmd /c gn gen out/Default --args="extra_cflags=\"/MD\" extra_ldflags=\"shlwapi.lib\""
+          ninja -C out/Default
+          mkdir "%INSTALL_DIR%/crashpad"
+          xcopy /s *.h "%INSTALL_DIR%/crashpad"
+          xcopy /s *.lib "%INSTALL_DIR%/crashpad"
+          xcopy /s *.exe "%INSTALL_DIR%/crashpad"
+          cd ..
+          rm -rf crashpad
+
+      - name: Correct install issues
+        shell: bash
+        run: |
+          cd $INSTALL_DIR
+          mv bin/*.lib lib/
+          mv lib/*.dll bin/
+
+      - name: Deploy
+        shell: bash
+        working-directory: ${{ runner.workspace }}
+        if: github.ref == 'refs/heads/master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRAVIS_REPO_SLUG: olive-editor/dependencies
+          TRAVIS_COMMIT: ${{ github.sha }}
+        run: |
+          cd $INSTALL_DIR/..
+          $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
+          tar czf "olive-dep-win32-$BUILD_TYPE.tar.gz" $(cygpath "install")
+          ./upload.sh "olive-dep-win32-$BUILD_TYPE.tar.gz"
+
+  mac:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            os: macos-latest
+          #- arch: arm64
+          #  os: macos-11.0
+    name: macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    env:
+      ARCH: ${{ matrix.arch }}
+      CFLAGS: "-mmacosx-version-min=10.13"
+      CXXFLAGS: "-mmacosx-version-min=10.13"
+      LDFLAGS: "-mmacosx-version-min=10.13"
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+      BUILD_TYPE: ${{ matrix.type }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v2
+
+      - name: Create install destination
+        shell: bash
+        run: |
+          sudo mkdir /opt/olive-editor
+          sudo chmod 777 /opt/olive-editor
+          echo "INSTALL_DIR=/opt/olive-editor" >> $GITHUB_ENV
+          echo -e "/opt/olive-editor\n/opt/olive-editor/lib\n/opt/olive-editor/include\n$(cat $GITHUB_PATH)" > $GITHUB_PATH
+
+      # HACK: Don't use pre-installed Homebrew 3.0.10 from GitHub's virtual environment
+      # Newer versions download packages from GitHub instead of Bintray which is shutting down
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install Ninja
+        shell: bash
+        run: |
+          brew install ninja
+
+      - name: Build
+        shell: bash
+        working-directory: ${{ runner.workspace }}
+        run: |
+          git clone https://chromium.googlesource.com/breakpad/breakpad
+          cd breakpad
+          ./configure
+          make
+          cp src/processor/minidump_stackwalk "$INSTALL_DIR/bin"
+          xcodebuild -project src/tools/mac/dump_syms/dump_syms.xcodeproj
+          cp src/tools/mac/dump_syms/build/Release/dump_syms "$INSTALL_DIR/bin"
+          cd ..
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          export PATH=$(pwd)/depot_tools:$PATH
+          mkdir crashpad
+          cd crashpad
+          git clone --depth 1 https://github.com/olive-editor/crashpad.git
+          gclient config https://github.com/olive-editor/crashpad.git
+          gclient sync
+          cd crashpad
+          gn gen out/Default
+          ninja -C out/Default
+          mkdir "$INSTALL_DIR/crashpad"
+          rsync -ra --include "*/" --include "*.h" --include "*.a" --include "out/Default/obj/out/Default/gen/util/mach/*.o" --exclude "*.*" . "$INSTALL_DIR/crashpad"
+          cd ..
+
+      - name: Deploy
+        shell: bash
+        working-directory: ${{ runner.workspace }}
+        if: github.ref == 'refs/heads/master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRAVIS_REPO_SLUG: olive-editor/dependencies
+          TRAVIS_COMMIT: ${{ github.sha }}
+        run: |
+          $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
+          tar czf "olive-dep-mac-$ARCH.tar.gz" "/opt/olive-editor"
+          chmod +x upload.sh
+          ./upload.sh "olive-dep-mac-$ARCH.tar.gz"
