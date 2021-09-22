@@ -24,8 +24,8 @@
 #include <utility>
 
 #include "base/logging.h"
+#include "base/macros.h"
 #include "base/numerics/safe_math.h"
-#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "client/settings.h"
 #include "util/file/directory_reader.h"
@@ -211,6 +211,9 @@ ReportDisk::ReportDisk(const UUID& uuid,
 //!     to disk, and queries.
 class Metadata {
  public:
+  Metadata(const Metadata&) = delete;
+  Metadata& operator=(const Metadata&) = delete;
+
   //! \brief Writes any changes if necessary, unlocks and closes the file
   //!     handle.
   ~Metadata();
@@ -299,8 +302,6 @@ class Metadata {
   const base::FilePath report_dir_;
   bool dirty_;  //! \brief `true` when a Write() is required on destruction.
   std::vector<ReportDisk> reports_;
-
-  DISALLOW_COPY_AND_ASSIGN(Metadata);
 };
 
 Metadata::~Metadata() {
@@ -618,6 +619,10 @@ bool CreateDirectoryIfNecessary(const base::FilePath& path) {
 class CrashReportDatabaseWin : public CrashReportDatabase {
  public:
   explicit CrashReportDatabaseWin(const base::FilePath& path);
+
+  CrashReportDatabaseWin(const CrashReportDatabaseWin&) = delete;
+  CrashReportDatabaseWin& operator=(const CrashReportDatabaseWin&) = delete;
+
   ~CrashReportDatabaseWin() override;
 
   bool Initialize(bool may_create);
@@ -665,8 +670,6 @@ class CrashReportDatabaseWin : public CrashReportDatabase {
   base::FilePath base_dir_;
   Settings settings_;
   InitializationStateDcheck initialized_;
-
-  DISALLOW_COPY_AND_ASSIGN(CrashReportDatabaseWin);
 };
 
 base::FilePath CrashReportDatabaseWin::AttachmentsRootPath() {

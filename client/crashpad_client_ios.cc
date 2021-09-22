@@ -18,12 +18,11 @@
 
 #include <ios>
 
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
 #include "base/mac/mach_logging.h"
 #include "base/mac/scoped_mach_port.h"
-#include "base/stl_util.h"
-#include "snapshot/ios/process_snapshot_ios.h"
-#include "util/ios/exception_processor.h"
+#include "client/ios_handler/exception_processor.h"
 #include "util/ios/ios_system_data_collector.h"
 #include "util/mach/exc_server_variants.h"
 #include "util/mach/exception_ports.h"
@@ -39,8 +38,13 @@ namespace crashpad {
 namespace {
 
 // A base class for signal handler and Mach exception server.
-class CrashHandler : public Thread, public UniversalMachExcServer::Interface {
+class CrashHandler : public Thread,
+                     public UniversalMachExcServer::Interface,
+                     public ObjcExceptionDelegate {
  public:
+  CrashHandler(const CrashHandler&) = delete;
+  CrashHandler& operator=(const CrashHandler&) = delete;
+
   static CrashHandler* Get() {
     static CrashHandler* instance = new CrashHandler();
     return instance;
@@ -54,6 +58,10 @@ class CrashHandler : public Thread, public UniversalMachExcServer::Interface {
   }
 
   void ProcessIntermediateDumps(
+      const std::map<std::string, std::string>& annotations = {}) {}
+
+  void ProcessIntermediateDump(
+      const base::FilePath& file,
       const std::map<std::string, std::string>& annotations = {}) {}
 
   void DumpWithoutCrash(NativeCPUContext* context) {
@@ -168,16 +176,6 @@ class CrashHandler : public Thread, public UniversalMachExcServer::Interface {
                            ConstThreadState old_state,
                            mach_msg_type_number_t old_state_count) {
     // TODO(justincohen): This is incomplete.
-    ProcessSnapshotIOS process_snapshot;
-    process_snapshot.Initialize(system_data_);
-    process_snapshot.SetExceptionFromMachException(behavior,
-                                                   thread,
-                                                   exception,
-                                                   code,
-                                                   code_count,
-                                                   flavor,
-                                                   old_state,
-                                                   old_state_count);
   }
 
   // The signal handler installed at OS-level.
@@ -190,12 +188,29 @@ class CrashHandler : public Thread, public UniversalMachExcServer::Interface {
                               siginfo_t* siginfo,
                               ucontext_t* context) {
     // TODO(justincohen): This is incomplete.
-    ProcessSnapshotIOS process_snapshot;
-    process_snapshot.Initialize(system_data_);
-    process_snapshot.SetExceptionFromSignal(siginfo, context);
 
     // Always call system handler.
     Signals::RestoreHandlerAndReraiseSignalOnReturn(siginfo, &old_action_);
+  }
+
+  void HandleUncaughtNSException(const uint64_t* frames,
+                                 const size_t num_frames) override {
+    // TODO(justincohen): Call into in_process_handler.
+
+    // After uncaught exceptions are reported, the system immediately triggers a
+    // call to std::terminate()/abort(). Remove the abort handler so a second
+    // dump isn't generated.
+    CHECK(Signals::InstallDefaultHandler(SIGABRT));
+  }
+
+  void HandleUncaughtNSExceptionWithContext(
+      NativeCPUContext* context) override {
+    // TODO(justincohen): Call into in_process_handler.
+
+    // After uncaught exceptions are reported, the system immediately triggers a
+    // call to std::terminate()/abort(). Remove the abort handler so a second
+    // dump isn't generated.
+    CHECK(Signals::InstallDefaultHandler(SIGABRT));
   }
 
   base::mac::ScopedMachReceiveRight exception_port_;
@@ -203,8 +218,6 @@ class CrashHandler : public Thread, public UniversalMachExcServer::Interface {
   struct sigaction old_action_ = {};
   internal::IOSSystemDataCollector system_data_;
   InitializationStateDcheck initialized_;
-
-  DISALLOW_COPY_AND_ASSIGN(CrashHandler);
 };
 
 }  // namespace
@@ -218,10 +231,10 @@ void CrashpadClient::StartCrashpadInProcessHandler(
     const base::FilePath& database,
     const std::string& url,
     const std::map<std::string, std::string>& annotations) {
-  InstallObjcExceptionPreprocessor();
 
   CrashHandler* crash_handler = CrashHandler::Get();
   DCHECK(crash_handler);
+  InstallObjcExceptionPreprocessor(crash_handler);
   crash_handler->Initialize();
 }
 
@@ -234,7 +247,16 @@ void CrashpadClient::ProcessIntermediateDumps(
 }
 
 // static
-void CrashpadClient::StartProcesingPendingReports() {
+void CrashpadClient::ProcessIntermediateDump(
+    const base::FilePath& file,
+    const std::map<std::string, std::string>& annotations) {
+  CrashHandler* crash_handler = CrashHandler::Get();
+  DCHECK(crash_handler);
+  crash_handler->ProcessIntermediateDump(file, annotations);
+}
+
+// static
+void CrashpadClient::StartProcessingPendingReports() {
   // TODO(justincohen): Start the CrashReportUploadThread.
 }
 
@@ -253,6 +275,16 @@ void CrashpadClient::DumpWithoutCrashAndDeferProcessing(
     NativeCPUContext* context) {
   CrashHandler* crash_handler = CrashHandler::Get();
   DCHECK(crash_handler);
+  crash_handler->DumpWithoutCrash(context);
+}
+
+// static
+void CrashpadClient::DumpWithoutCrashAndDeferProcessingAtPath(
+    NativeCPUContext* context,
+    const base::FilePath path) {
+  CrashHandler* crash_handler = CrashHandler::Get();
+  DCHECK(crash_handler);
+  // TODO(justincohen): Change to DumpWithoutCrashAtPath(context, path).
   crash_handler->DumpWithoutCrash(context);
 }
 
