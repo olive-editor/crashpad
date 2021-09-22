@@ -58,13 +58,11 @@ jobs:
         if: github.ref == 'refs/heads/master'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TRAVIS_REPO_SLUG: olive-editor/dependencies
-          TRAVIS_COMMIT: ${{ github.sha }}
         run: |
           cd $INSTALL_DIR/..
           $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
-          tar czf "olive-dep-win32-$BUILD_TYPE.tar.gz" $(cygpath "install")
-          ./upload.sh "olive-dep-win32-$BUILD_TYPE.tar.gz"
+          tar czf "crashpad-win32-$BUILD_TYPE.tar.gz" $(cygpath "install")
+          ./upload.sh "crashpad-win32-$BUILD_TYPE.tar.gz"
 
   mac:
     strategy:
