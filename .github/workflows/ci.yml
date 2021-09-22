@@ -52,13 +52,6 @@ jobs:
           xcopy /s *.lib "%INSTALL_DIR%/crashpad"
           xcopy /s *.exe "%INSTALL_DIR%/crashpad"
 
-      - name: Correct install issues
-        shell: bash
-        run: |
-          cd $INSTALL_DIR
-          mv bin/*.lib lib/
-          mv lib/*.dll bin/
-
       - name: Deploy
         shell: bash
         working-directory: ${{ runner.workspace }}
@@ -103,8 +96,6 @@ jobs:
           sudo chmod 777 /opt/olive-editor
           echo "INSTALL_DIR=/opt/olive-editor" >> $GITHUB_ENV
 
-      # HACK: Don't use pre-installed Homebrew 3.0.10 from GitHub's virtual environment
-      # Newer versions download packages from GitHub instead of Bintray which is shutting down
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
