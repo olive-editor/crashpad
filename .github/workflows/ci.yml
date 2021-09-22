@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v2
+        with:
+          path: 'crashpad/crashpad'
 
       - name: Enable Developer Command Prompt (Windows)
         uses: ilammy/msvc-dev-cmd@v1
@@ -28,9 +30,6 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/install
           echo "INSTALL_DIR=$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
-          echo "BOOST_ROOT=$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
-          echo "$GITHUB_WORKSPACE/install" >> $GITHUB_PATH
-          echo "$GITHUB_WORKSPACE/install/bin" >> $GITHUB_PATH
 
       - name: Build
         shell: cmd
@@ -42,9 +41,7 @@ jobs:
           curl -fsSL http://hg.mozilla.org/build/tools/raw-file/755e58ebc9d4/breakpad/win32/cyggcc_s-1.dll -o "%INSTALL_DIR%/bin/cyggcc_s-1.dll"
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           set PATH=%cd%\depot_tools;%PATH%
-          mkdir crashpad
           cd crashpad
-          git clone --depth 1 https://github.com/olive-editor/crashpad.git
           cmd /c gclient config https://github.com/olive-editor/crashpad.git
           cmd /c gclient sync
           cd crashpad
@@ -54,8 +51,6 @@ jobs:
           xcopy /s *.h "%INSTALL_DIR%/crashpad"
           xcopy /s *.lib "%INSTALL_DIR%/crashpad"
           xcopy /s *.exe "%INSTALL_DIR%/crashpad"
-          cd ..
-          rm -rf crashpad
 
       - name: Correct install issues
         shell: bash
@@ -98,6 +93,8 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v2
+        with:
+          path: 'crashpad/crashpad'
 
       - name: Create install destination
         shell: bash
@@ -105,7 +102,6 @@ jobs:
           sudo mkdir /opt/olive-editor
           sudo chmod 777 /opt/olive-editor
           echo "INSTALL_DIR=/opt/olive-editor" >> $GITHUB_ENV
-          echo -e "/opt/olive-editor\n/opt/olive-editor/lib\n/opt/olive-editor/include\n$(cat $GITHUB_PATH)" > $GITHUB_PATH
 
       # HACK: Don't use pre-installed Homebrew 3.0.10 from GitHub's virtual environment
       # Newer versions download packages from GitHub instead of Bintray which is shutting down
@@ -131,9 +127,7 @@ jobs:
           cd ..
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           export PATH=$(pwd)/depot_tools:$PATH
-          mkdir crashpad
           cd crashpad
-          git clone --depth 1 https://github.com/olive-editor/crashpad.git
           gclient config https://github.com/olive-editor/crashpad.git
           gclient sync
           cd crashpad
@@ -141,7 +135,6 @@ jobs:
           ninja -C out/Default
           mkdir "$INSTALL_DIR/crashpad"
           rsync -ra --include "*/" --include "*.h" --include "*.a" --include "out/Default/obj/out/Default/gen/util/mach/*.o" --exclude "*.*" . "$INSTALL_DIR/crashpad"
-          cd ..
 
       - name: Deploy
         shell: bash
@@ -149,10 +142,8 @@ jobs:
         if: github.ref == 'refs/heads/master'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TRAVIS_REPO_SLUG: olive-editor/dependencies
-          TRAVIS_COMMIT: ${{ github.sha }}
         run: |
           $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
-          tar czf "olive-dep-mac-$ARCH.tar.gz" "/opt/olive-editor"
+          tar czf "crashpad-mac-$ARCH.tar.gz" "/opt/olive-editor"
           chmod +x upload.sh
-          ./upload.sh "olive-dep-mac-$ARCH.tar.gz"
+          ./upload.sh "crashpad-mac-$ARCH.tar.gz"
