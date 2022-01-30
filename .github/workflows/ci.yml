@@ -130,7 +130,7 @@ jobs:
           gclient config https://github.com/olive-editor/crashpad.git
           gclient sync
           cd crashpad
-          gn gen out/Default
+          gn gen out/Default "--args=target_cpu=\"arm64\""
           ninja -C out/Default
           mkdir "$INSTALL_DIR/crashpad"
           rsync -ra --include "*/" --include "*.h" --include "*.a" --include "out/Default/obj/out/Default/gen/util/mach/*.o" --exclude "*.*" . "$INSTALL_DIR/crashpad"
