@@ -108,7 +108,15 @@ jobs:
         run: |
           git clone https://chromium.googlesource.com/breakpad/breakpad
           cd breakpad
-          ./configure
+
+          if [ "${{ matrix.arch }}" == "arm64" ]
+          then
+            HOST=aarch64
+          else
+            HOST=x86_64
+          fi
+
+          ./configure --host=$HOST-apple-darwin
           make
           mkdir "$INSTALL_DIR/bin"
           cp src/processor/minidump_stackwalk "$INSTALL_DIR/bin"
