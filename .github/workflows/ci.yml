@@ -78,6 +78,7 @@ jobs:
     env:
       CFLAGS: "-mmacosx-version-min=10.13 -arch ${{ matrix.arch }}"
       CXXFLAGS: "-mmacosx-version-min=10.13 -arch ${{ matrix.arch }}"
+      CPPFLAGS: "-mmacosx-version-min=10.13 -arch ${{ matrix.arch }}"
       LDFLAGS: "-mmacosx-version-min=10.13 -arch ${{ matrix.arch }}"
       MACOSX_DEPLOYMENT_TARGET: 10.13
       BUILD_TYPE: ${{ matrix.type }}
@@ -120,7 +121,7 @@ jobs:
           make
           mkdir "$INSTALL_DIR/bin"
           cp src/processor/minidump_stackwalk "$INSTALL_DIR/bin"
-          xcodebuild -project src/tools/mac/dump_syms/dump_syms.xcodeproj
+          xcodebuild -project src/tools/mac/dump_syms/dump_syms.xcodeproj -arch ${{ matrix.arch }}
           cp src/tools/mac/dump_syms/build/Release/dump_syms "$INSTALL_DIR/bin"
           cd ..
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
