@@ -25,6 +25,7 @@
 #include "minidump/minidump_file_writer.h"
 #include "test/errors.h"
 #include "test/scoped_temp_dir.h"
+#include "test/test_paths.h"
 #include "util/file/file_io.h"
 #include "util/file/filesystem.h"
 #include "util/file/string_file.h"
@@ -336,9 +337,8 @@ class ProcessSnapshotIOSIntermediateDumpTest : public testing::Test {
       stack_region_address += 10;
       EXPECT_TRUE(
           writer->AddProperty(Key::kStackRegionAddress, &stack_region_address));
-      constexpr char memory_region[] = "stack_data";
       EXPECT_TRUE(
-          writer->AddPropertyBytes(Key::kStackRegionData, memory_region, 10));
+          writer->AddPropertyBytes(Key::kStackRegionData, "stack_data", 10));
       {
         IOSIntermediateDumpWriter::ScopedArray memoryRegions(
             writer, Key::kThreadContextMemoryRegions);
@@ -347,9 +347,8 @@ class ProcessSnapshotIOSIntermediateDumpTest : public testing::Test {
           const vm_address_t memory_region_address = 0;
           EXPECT_TRUE(writer->AddProperty(
               Key::kThreadContextMemoryRegionAddress, &memory_region_address));
-          constexpr char memory_region[] = "string";
           EXPECT_TRUE(writer->AddPropertyBytes(
-              Key::kThreadContextMemoryRegionData, memory_region, 6));
+              Key::kThreadContextMemoryRegionData, "string", 6));
         }
       }
     }
@@ -630,6 +629,15 @@ TEST_F(ProcessSnapshotIOSIntermediateDumpTest, FullReport) {
   EXPECT_FALSE(IsRegularFile(path()));
   EXPECT_TRUE(DumpSnapshot(process_snapshot));
   ExpectSnapshot(process_snapshot);
+}
+
+TEST_F(ProcessSnapshotIOSIntermediateDumpTest, FuzzTestCases) {
+  base::FilePath fuzz_path = TestPaths::TestDataRoot().Append(FILE_PATH_LITERAL(
+      "snapshot/ios/testdata/crash-1fa088dda0adb41459d063078a0f384a0bb8eefa"));
+
+  crashpad::internal::ProcessSnapshotIOSIntermediateDump process_snapshot;
+  EXPECT_TRUE(process_snapshot.Initialize(fuzz_path, {}));
+  EXPECT_TRUE(LoggingRemoveFile(path()));
 }
 
 }  // namespace
