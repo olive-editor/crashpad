@@ -135,7 +135,7 @@ jobs:
           then
             CPU=arm64
           else
-            CPU=x86
+            CPU=x64
           fi
 
           gn gen out/Default "--args=target_cpu=\"$CPU\""
