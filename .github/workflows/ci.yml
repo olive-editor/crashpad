@@ -11,7 +11,6 @@ jobs:
       matrix:
         include:
           - type: RelWithDebInfo
-          - type: Debug
     name: Windows ${{ matrix.type }}
     runs-on: windows-latest
     env:
