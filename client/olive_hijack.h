@@ -7,7 +7,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef BUILDFLAG(IS_APPLE)
+#if BUILDFLAG(IS_APPLE)
 #include <mach-o/dyld.h>
 #endif
 
@@ -15,7 +15,7 @@ void LaunchOliveCrashHandler(const base::FilePath& report_file)
 {
   static const int path_sz = 2048;
 
-#ifdef BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN)
   // Windows doesn't support exec, so we use exclusive Windows API functions for this.
   // Probably for the best so unicode handling can be consistent.
   wchar_t path[path_sz];
@@ -38,7 +38,7 @@ void LaunchOliveCrashHandler(const base::FilePath& report_file)
   // Create path buffer
   char path[path_sz];
 
-#ifdef BUILDFLAG(IS_APPLE)
+#if BUILDFLAG(IS_APPLE)
 
   // macOS doesn't have "/proc/self/exe", so we use a Cocoa function to retrieve the binary path
   uint32_t _ns_path_sz = path_sz;
