@@ -21,7 +21,8 @@
 #include <sys/sysctl.h>
 #include <time.h>
 
-#include "base/cxx17_backports.h"
+#include <iterator>
+
 #include "build/build_config.h"
 #include "snapshot/snapshot_constants.h"
 #include "util/ios/ios_intermediate_dump_writer.h"
@@ -428,7 +429,7 @@ void CaptureMemoryPointedToByThreadState(IOSIntermediateDumpWriter* writer,
   MaybeCaptureMemoryAround(writer, thread_state.__rip);
 #elif defined(ARCH_CPU_ARM_FAMILY)
   MaybeCaptureMemoryAround(writer, thread_state.__pc);
-  for (size_t i = 0; i < base::size(thread_state.__x); ++i) {
+  for (size_t i = 0; i < std::size(thread_state.__x); ++i) {
     MaybeCaptureMemoryAround(writer, thread_state.__x[i]);
   }
 #endif
@@ -582,7 +583,8 @@ void InProcessIntermediateDumpHandler::WriteHeader(
 
 // static
 void InProcessIntermediateDumpHandler::WriteProcessInfo(
-    IOSIntermediateDumpWriter* writer) {
+    IOSIntermediateDumpWriter* writer,
+    const std::map<std::string, std::string>& annotations) {
   IOSIntermediateDumpWriter::ScopedMap process_map(
       writer, IntermediateDumpKey::kProcessInfo);
 
@@ -597,7 +599,7 @@ void InProcessIntermediateDumpHandler::WriteProcessInfo(
   kinfo_proc kern_proc_info;
   int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
   size_t len = sizeof(kern_proc_info);
-  if (sysctl(mib, base::size(mib), &kern_proc_info, &len, nullptr, 0) == 0) {
+  if (sysctl(mib, std::size(mib), &kern_proc_info, &len, nullptr, 0) == 0) {
     WriteProperty(
         writer, IntermediateDumpKey::kPID, &kern_proc_info.kp_proc.p_pid);
     WriteProperty(writer,
@@ -645,7 +647,25 @@ void InProcessIntermediateDumpHandler::WriteProcessInfo(
                   IntermediateDumpKey::kSystemTime,
                   &task_thread_times.system_time);
   } else {
-    CRASHPAD_RAW_LOG("task_info task_basic_info");
+    CRASHPAD_RAW_LOG("task_info thread_times_info");
+  }
+
+  if (!annotations.empty()) {
+    IOSIntermediateDumpWriter::ScopedArray simple_annotations_array(
+        writer, IntermediateDumpKey::kAnnotationsSimpleMap);
+    for (const auto& annotation_pair : annotations) {
+      const std::string& key = annotation_pair.first;
+      const std::string& value = annotation_pair.second;
+      IOSIntermediateDumpWriter::ScopedArrayMap annotation_map(writer);
+      WriteProperty(writer,
+                    IntermediateDumpKey::kAnnotationName,
+                    key.c_str(),
+                    key.length());
+      WriteProperty(writer,
+                    IntermediateDumpKey::kAnnotationValue,
+                    value.c_str(),
+                    value.length());
+    }
   }
 }
 
@@ -943,10 +963,12 @@ void InProcessIntermediateDumpHandler::WriteModuleInfo(
       return;
     }
 
-    WriteProperty(writer,
-                  IntermediateDumpKey::kName,
-                  image->imageFilePath,
-                  strlen(image->imageFilePath));
+    if (image->imageFilePath) {
+      WriteProperty(writer,
+                    IntermediateDumpKey::kName,
+                    image->imageFilePath,
+                    strlen(image->imageFilePath));
+    }
     uint64_t address = FromPointerCast<uint64_t>(image->imageLoadAddress);
     WriteProperty(writer, IntermediateDumpKey::kAddress, &address);
     WriteProperty(
@@ -956,7 +978,12 @@ void InProcessIntermediateDumpHandler::WriteModuleInfo(
 
   {
     IOSIntermediateDumpWriter::ScopedArrayMap modules(writer);
-    WriteProperty(writer, IntermediateDumpKey::kName, image_infos->dyldPath);
+    if (image_infos->dyldPath) {
+      WriteProperty(writer,
+                    IntermediateDumpKey::kName,
+                    image_infos->dyldPath,
+                    strlen(image_infos->dyldPath));
+    }
     uint64_t address =
         FromPointerCast<uint64_t>(image_infos->dyldImageLoadAddress);
     WriteProperty(writer, IntermediateDumpKey::kAddress, &address);
