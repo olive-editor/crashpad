@@ -1,4 +1,4 @@
-// Copyright 2018 The Crashpad Authors. All rights reserved.
+// Copyright 2018 The Crashpad Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -213,6 +213,12 @@ void ValidateDump(const StartHandlerForSelfTestOptions& options,
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winfinite-recursion"
+// Clang (masquerading as gcc) is too smart, and removes the recursion
+// otherwise. May need to change if either clang or another compiler becomes
+// smarter.
+#if defined(COMPILER_GCC)
+__attribute__((noinline))
+#endif
 int RecurseInfinitely(int* ptr) {
   int buf[1 << 20];
   return *ptr + RecurseInfinitely(buf);
@@ -268,7 +274,7 @@ class ScopedAltSignalStack {
 
   void Initialize() {
     ScopedMmap local_stack_mem;
-    constexpr size_t stack_size = MINSIGSTKSZ;
+    const size_t stack_size = MINSIGSTKSZ;
     ASSERT_TRUE(local_stack_mem.ResetMmap(nullptr,
                                           stack_size,
                                           PROT_READ | PROT_WRITE,
