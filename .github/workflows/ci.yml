@@ -106,8 +106,9 @@ jobs:
         shell: bash
         working-directory: ${{ runner.workspace }}
         run: |
-          git clone --depth 1 --branch 652e7dac80f7a97c69818b928830850bfd1cf0f8 https://chromium.googlesource.com/breakpad/breakpad
+          git clone https://chromium.googlesource.com/breakpad/breakpad
           cd breakpad
+          git checkout 652e7dac80f7a97c69818b928830850bfd1cf0f8
 
           if [ "${{ matrix.arch }}" == "arm64" ]
           then
