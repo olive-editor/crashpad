@@ -1,4 +1,4 @@
-# Copyright 2015 The Crashpad Authors. All rights reserved.
+# Copyright 2015 The Crashpad Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,22 @@ source_set("tool_support") {
   public_configs = [ "..:crashpad_config" ]
 
   deps = [ "$mini_chromium_source_parent:base" ]
+}
+
+crashpad_executable("dump_minidump_annotations") {
+  sources = [ "dump_minidump_annotations.cc" ]
+
+  deps = [
+    ":tool_support",
+    "../client",
+    "../snapshot",
+    "../util",
+  ]
+
+  if (crashpad_is_win) {
+    cflags =
+        [ "/wd4201" ]  # nonstandard extension used : nameless struct/union
+  }
 }
 
 if (!crashpad_is_ios) {
