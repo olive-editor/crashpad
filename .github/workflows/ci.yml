@@ -12,7 +12,7 @@ jobs:
         include:
           - type: RelWithDebInfo
     name: Windows ${{ matrix.type }}
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
       BUILD_TYPE: ${{ matrix.type }}
     steps:
