@@ -59,6 +59,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Force using msys's curl because the default seems to be broken
+          PATH=/c/msys64/usr/bin:$PATH
+          
           cd $INSTALL_DIR/..
           $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
           tar czf "crashpad-win32-$BUILD_TYPE.tar.gz" $(cygpath "install")
@@ -152,9 +155,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Force using msys's curl because the default seems to be broken
-          PATH=/c/msys64/usr/bin:$PATH
-          
           $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
           tar czf "crashpad-mac-${{ matrix.arch }}.tar.gz" "/opt/olive-editor"
           chmod +x upload.sh
