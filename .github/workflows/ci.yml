@@ -51,12 +51,6 @@ jobs:
           xcopy /s *.h "%INSTALL_DIR%/crashpad"
           xcopy /s *.lib "%INSTALL_DIR%/crashpad"
           xcopy /s *.exe "%INSTALL_DIR%/crashpad"
-          
-      - name: Start SSH session
-        uses: luchihoratiu/debug-via-ssh@main
-        with:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-          SSH_PASS: ${{ secrets.SSH_PASS }}
 
       - name: Deploy
         shell: bash
