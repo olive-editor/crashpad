@@ -146,6 +146,7 @@ jobs:
           fi
 
           gn gen out/Default "--args=target_cpu=\"$CPU\""
+          ninja -C out/Default
           mkdir "$INSTALL_DIR/crashpad"
           rsync -ra --include "*/" --include "*.h" --include "*.a" --include "out/Default/obj/out/Default/gen/util/mach/*.o" --exclude "*.*" . "$INSTALL_DIR/crashpad"
 
