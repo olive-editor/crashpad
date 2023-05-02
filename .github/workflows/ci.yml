@@ -65,8 +65,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Force using msys's curl because the default seems to be broken
-          PATH=/c/msys64/usr/bin:$PATH
+          # Force using system curl rather than msys's
+          PATH=/c/Windows/system32:$PATH
           
           cd $INSTALL_DIR/..
           $DOWNLOAD_TOOL https://github.com/probonopd/uploadtool/raw/master/upload.sh
